@@ -8,6 +8,7 @@ Firmware\src\modules\mc_pos_control
 
 Firmware\src\modules\mc_att_control 
 
+only compatible with a few old versions  
 
 if you have any questions, please contact me 1067542448@qq.com
   
