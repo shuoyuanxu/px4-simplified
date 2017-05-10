@@ -811,9 +811,6 @@ MulticopterPositionControl::update_ref()
 		if (_ref_timestamp != 0) 
 			{
 			/* calculate current position setpoint in global frame */
-			_pos_sp(0) = _pos_sp_triplet.current.x;
-		    _pos_sp(1) = _pos_sp_triplet.current.y;
-			_pos_sp(2) = _pos_sp_triplet.current.z;
 			map_projection_reproject(&_ref_pos, _pos_sp(0), _pos_sp(1), &lat_sp, &lon_sp);
 			alt_sp = _ref_alt - _pos_sp(2);
 			}
@@ -824,9 +821,6 @@ MulticopterPositionControl::update_ref()
 
 		if (_ref_timestamp != 0) 
 			{
-			lat_sp = _pos_sp_triplet.current.lat;
-		    lon_sp = _pos_sp_triplet.current.lon;
-			alt_sp = _pos_sp_triplet.current.alt;
 			/* reproject position setpoint to new reference */
 			map_projection_project(&_ref_pos, lat_sp, lon_sp, &_pos_sp.data[0], &_pos_sp.data[1]);
 			_pos_sp(2) = -(alt_sp - _ref_alt);
@@ -1031,7 +1025,7 @@ MulticopterPositionControl::task_main()
 
 		if (_control_mode.flag_armed && !was_armed) {
 			/* reset setpoints and integrals on arming */
-			_reset_pos_sp = true;
+            // _reset_pos_sp = true;
 			_reset_alt_sp = true;
 			_do_reset_alt_pos_flag = true;
 			_vel_sp_prev.zero();
@@ -1043,12 +1037,7 @@ MulticopterPositionControl::task_main()
 		//Update previous arming state
 		was_armed = _control_mode.flag_armed;
 
-		//project global position to local position 
-		update_ref();
-
 		update_velocity_derivative();
-
-		//pro
 
 		/* fill local position, velocity and thrust setpoint */
 		_local_pos_sp.timestamp = hrt_absolute_time();
@@ -1072,7 +1061,7 @@ MulticopterPositionControl::task_main()
 
 		// control mode switch, mannual, offboard, auto
 		
-		/* mannual mode */
+		/* manual mode */
 		if (_control_mode.flag_control_manual_enabled) 
 			{
 			_att_sp.roll_body = _manual.y * _params.man_roll_max;
@@ -1093,16 +1082,19 @@ MulticopterPositionControl::task_main()
                 memcpy(&_att_sp.q_d[0], &q_sp.data[0], sizeof(_att_sp.q_d));
 			}
 		
-		/* auto mode */
-		if (_control_mode.flag_control_auto_enabled) 
-			{
+        /* altitude mode */
+        if (_control_mode.flag_control_altitude_enabled)
+            {
 			/* yaw control */
 			_att_sp.yaw_sp_move_rate = _manual.r * _params.man_yaw_max;
 			float yaw_target_o= _wrap_pi(_att_sp.yaw_body + _att_sp.yaw_sp_move_rate * dt);
 			_att_sp.yaw_body = yaw_target_o;
+                        _pos_sp(0) = _manual.y * 10;
+                        _pos_sp(1) = -_manual.x * 10;
+                        _pos_sp(2) = -_manual.z *5;
 			/* run position to velocity P controllers*/
-			_vel_sp(0) = (_pos_sp(0) - _pos(0)) * _params.pos_p(0);
-			_vel_sp(1) = (_pos_sp(1) - _pos(1)) * _params.pos_p(1);	
+			_vel_sp(0) = cosf(_yaw) * (_pos_sp(0) - _pos(0)) * _params.pos_p(0) - sinf(_yaw) * (_pos_sp(1) - _pos(1)) * _params.pos_p(1);
+			_vel_sp(1) = sinf(_yaw) * (_pos_sp(0) - _pos(0)) * _params.pos_p(0) + cosf(_yaw) * (_pos_sp(1) - _pos(1)) * _params.pos_p(1);	
 			_vel_sp(2) = (_pos_sp(2) - _pos(2)) * _params.pos_p(2);
 			/* velocity setpoint saturation*/
 			float vel_norm_xy = sqrtf(_vel_sp(0) * _vel_sp(0) + _vel_sp(1) * _vel_sp(1));
@@ -1124,7 +1116,7 @@ MulticopterPositionControl::task_main()
 			/* Trimming */
 			thrust_int(0) = 0.0f; 
 			thrust_int(1) = 0.0f;
-			float i = _params.thr_min;
+			float i = _params.thr_hover;
 			thrust_int(2) = -i;
 			/* velocity error */
 			math::Vector<3> vel_err = _vel_sp - _vel;
@@ -1213,27 +1205,7 @@ MulticopterPositionControl::task_main()
 			        thrust_abs = thrust_sp.length();
 			        _att_sp.thrust = thrust_abs;
 			}
-		
-		/* offboard mode */
-		if (_control_mode.flag_control_offboard_enabled) 
-			{
-			_att_sp.roll_body = _manual.y * _params.man_roll_max;
-			_att_sp.pitch_body = -_manual.x * _params.man_pitch_max;
-			/* altitude control */
-			float thr_val = throttle_curve(_manual.z, _params.thr_hover);
-			_att_sp.thrust = math::min(thr_val, _manual_thr_max.get());
-			/* yaw control */
-			_att_sp.yaw_sp_move_rate = _manual.r * _params.man_yaw_max;
-			float yaw_target_a = _wrap_pi(_att_sp.yaw_body + _att_sp.yaw_sp_move_rate * dt);
-			_att_sp.yaw_body = yaw_target_a;
-			/* create rotation matrix */
-			    math::Matrix<3, 3> R_sp;
-				R_sp.from_euler(_att_sp.roll_body, _att_sp.pitch_body, _att_sp.yaw_body);
-			/* copy quaternion setpoint to attitude setpoint topic */
-				math::Quaternion q_sp;
-				q_sp.from_dcm(R_sp);
-                memcpy(&_att_sp.q_d[0], &q_sp.data[0], sizeof(_att_sp.q_d));;
-			} 		
+		 		
 
 		/* publish attitude setpoint
 		 * Do not publish if offboard is enabled but position/velocity/accel control is disabled,
