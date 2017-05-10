@@ -1,6 +1,8 @@
 # px4-simplified  
 
-only two mode left: mannual and position control  
+The reason I made this is to help understanding the framework of PX4 and also to prepare a clean enviroment for future functionalities development    
+
+only two modes left: attitude and position control（mannually）   
 
 if you want to use, try replace two files in the dirctory listed bellow:  
 
