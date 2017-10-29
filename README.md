@@ -15,3 +15,9 @@ only compatible with a few old versions
 if you have any questions, please contact me 1067542448@qq.com
   
 https://www.youtube.com/channel/UCRnzJhv6RKTSOPK2jxv3mOA Flight test video
+
+
+
+
+P.S. 8arm_multirotor is the MATLAB simulation model of this code
+
