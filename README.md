@@ -12,7 +12,7 @@ Firmware\src\modules\mc_att_control
 
 only compatible with a few old versions  
 
-if you have any questions, please contact me 1067542448@qq.com
+if you have any questions, please contact me
   
 https://www.youtube.com/channel/UCRnzJhv6RKTSOPK2jxv3mOA Flight test video
 
